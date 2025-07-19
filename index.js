@@ -5,8 +5,6 @@ import ccxt from 'ccxt';
 
 const TELEGRAM_TOKEN = 'توكن_البوت';
 const CHAT_ID = 'معرف_التليجرام';
-const INTERVAL = '4h'; // كل 15 دقيقة
-
 const exchange = new ccxt.binance();
 const coins = JSON.parse(fs.readFileSync('./coins.json'));
 const stateFile = './state.json';
@@ -29,13 +27,14 @@ async function sendTelegramMessage(symbol, type, price, pnl = null) {
   const action = type === 'buy' ? 'شراء' : 'بيع';
   const date = formatDate();
 
-  let message = `${emoji} <b>${action}:</b> <b>${symbol}</b>\n`;
+  let message = `========================\n`;
+  message += `${emoji} <b>${action}:</b> <b>${symbol}</b>\n`;
   message += `🕒 <b>الوقت:</b> ${date}\n`;
   message += `💰 <b>السعر:</b> ${price.toFixed(4)}$\n`;
-
   if (pnl !== null) {
     message += `📊 <b>الربح/الخسارة:</b> ${pnl}%\n`;
   }
+  message += `========================`;
 
   await axios.post(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`, {
     chat_id: CHAT_ID,
@@ -49,10 +48,15 @@ async function runAnalysis() {
     try {
       const ohlcv = await exchange.fetchOHLCV(symbol, '4h');
       const closes = ohlcv.map(c => c[4]);
+      const lastCandleTime = ohlcv[ohlcv.length - 1][0];
+
       const rsi = getRSI(closes);
       const bb = getBB(closes);
       const macd = getMACD(closes);
       const coinState = state[symbol] || { status: 'waiting' };
+
+      // لا تحلل نفس الشمعة مرتين
+      if (coinState.lastCandleTime === lastCandleTime) continue;
 
       // إشارة شراء
       if (rsi < 45 && bb < 0.4 && macd.crossover === 'bullish' && coinState.status !== 'bought') {
@@ -61,7 +65,8 @@ async function runAnalysis() {
         state[symbol] = {
           status: 'bought',
           buy_price: buyPrice,
-          buy_time: new Date().toISOString()
+          buy_time: new Date().toISOString(),
+          lastCandleTime: lastCandleTime
         };
       }
 
@@ -70,7 +75,10 @@ async function runAnalysis() {
         const sellPrice = closes[closes.length - 1];
         const pnl = calculatePnL(coinState.buy_price, sellPrice);
         await sendTelegramMessage(symbol, 'sell', sellPrice, pnl);
-        state[symbol] = { status: 'waiting' };
+        state[symbol] = {
+          status: 'waiting',
+          lastCandleTime: lastCandleTime
+        };
       }
 
     } catch (e) {
@@ -128,6 +136,6 @@ function getMACD(closes) {
   return { macd: macdLine, signal: signalLine, crossover };
 }
 
-// تشغيل التحليل كل 15 دقيقة
-cron.schedule(INTERVAL, runAnalysis);
+// ✅ تشغيل التحليل كل 15 دقيقة
+cron.schedule('*/15 * * * *', runAnalysis);
 console.log('📡 البوت يعمل الآن ويحلل كل 15 دقيقة...');
