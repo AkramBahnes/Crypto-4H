@@ -1,0 +1,19 @@
+{
+  "name": "binance-4h-alert-bot",
+  "version": "1.0.0",
+  "description": "Bot that analyzes top Binance coins every 15 minutes on 4H chart",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "axios": "^1.6.8",
+    "ccxt": "^4.1.89",
+    "node-telegram-bot-api": "^0.61.0",
+    "technicalindicators": "^3.1.1"
+  },
+  "engines": {
+    "node": "20.x"
+  }
+}
