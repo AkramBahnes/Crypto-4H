@@ -3,8 +3,8 @@ import axios from 'axios';
 import cron from 'node-cron';
 import ccxt from 'ccxt';
 
-const TELEGRAM_TOKEN = 'توكن_البوت';
-const CHAT_ID = 'معرف_التليجرام';
+const TELEGRAM_TOKEN = '7844382420:AAE8HA_-YmxlTYA24E2ff82gkFv2pLlJ7m4';
+const CHAT_ID = '1055739217';
 const exchange = new ccxt.binance();
 const coins = JSON.parse(fs.readFileSync('./coins.json'));
 const stateFile = './state.json';
