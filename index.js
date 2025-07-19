@@ -2,7 +2,8 @@ import axios from 'axios';
 import ccxt from 'ccxt';
 import TelegramBot from 'node-telegram-bot-api';
 import { macd, rsi, bollingerbands } from 'technicalindicators';
-import coins from './coins.json' assert { type: 'json' };
+import coins from './coins.json' with { type: 'json' };
+
 
 const token = '7844382420:AAE8HA_-YmxlTYA24E2ff82gkFv2pLlJ7m4';
 const chatId = '1055739217';
