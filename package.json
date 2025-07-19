@@ -1,19 +1,17 @@
 {
   "name": "binance-4h-alert-bot",
   "version": "1.0.0",
-  "description": "Bot that analyzes top Binance coins every 15 minutes on 4H chart",
+  "description": "Binance alert bot on 4H timeframe with RSI, %B and MACD strategy",
   "main": "index.js",
   "type": "module",
   "scripts": {
     "start": "node index.js"
   },
   "dependencies": {
-    "axios": "^1.6.8",
-    "ccxt": "^4.1.89",
+    "ccxt": "^4.1.98",
     "node-telegram-bot-api": "^0.61.0",
-    "technicalindicators": "^3.1.1"
-  },
-  "engines": {
-    "node": "20.x"
+    "technicalindicators": "^3.1.0",
+    "node-cron": "^3.0.3",
+    "axios": "^1.6.8"
   }
 }
