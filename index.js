@@ -5,7 +5,7 @@ import ccxt from 'ccxt';
 
 const TELEGRAM_TOKEN = 'توكن_البوت';
 const CHAT_ID = 'معرف_التليجرام';
-const INTERVAL = '*/15 * * * *'; // كل 15 دقيقة
+const INTERVAL = '4h'; // كل 15 دقيقة
 
 const exchange = new ccxt.binance();
 const coins = JSON.parse(fs.readFileSync('./coins.json'));
