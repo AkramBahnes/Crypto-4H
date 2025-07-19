@@ -4,8 +4,8 @@ import TelegramBot from 'node-telegram-bot-api';
 import { macd, rsi, bollingerbands } from 'technicalindicators';
 import coins from './coins.json' assert { type: 'json' };
 
-const token = 'YOUR_TELEGRAM_BOT_TOKEN';
-const chatId = 'YOUR_TELEGRAM_CHAT_ID';
+const token = '7844382420:AAE8HA_-YmxlTYA24E2ff82gkFv2pLlJ7m4';
+const chatId = '1055739217';
 const bot = new TelegramBot(token);
 
 const INTERVAL = '4h';
