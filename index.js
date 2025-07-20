@@ -1,4 +1,3 @@
-
 import fs from 'fs';
 import axios from 'axios';
 import cron from 'node-cron';
@@ -7,102 +6,135 @@ import ccxt from 'ccxt';
 const TELEGRAM_TOKEN = '7844382420:AAE8HA_-YmxlTYA24E2ff82gkFv2pLlJ7m4';
 const CHAT_ID = '1055739217';
 const exchange = new ccxt.binance();
-
-// Load coins from coins.json
 const coins = JSON.parse(fs.readFileSync('./coins.json'));
-
-// State tracking for positions
-let tradeState = {};
-
-// Load previous state if available
 const stateFile = './state.json';
+
+let state = {};
 if (fs.existsSync(stateFile)) {
-  tradeState = JSON.parse(fs.readFileSync(stateFile));
+  state = JSON.parse(fs.readFileSync(stateFile));
 }
 
-// Save trade state
-function saveTradeState() {
-  fs.writeFileSync(stateFile, JSON.stringify(tradeState, null, 2));
+function saveState() {
+  fs.writeFileSync(stateFile, JSON.stringify(state, null, 2));
 }
 
-// Send Telegram message
-async function sendTelegramMessage(message) {
-  const url = `https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`;
-  await axios.post(url, {
+function sendTelegramMessage(message) {
+  axios.post(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`, {
     chat_id: CHAT_ID,
     text: message,
-    parse_mode: 'Markdown'
+    parse_mode: 'HTML'
   });
 }
 
-// Indicator logic (based on your TradingView script)
-function calculateIndicators(ohlcv) {
-  const closes = ohlcv.map(c => c[4]);
+function calculateIndicators(candles) {
+  const closes = candles.map(c => c.close);
+
+  // RSI
   const rsiPeriod = 14;
-  const bbPeriod = 20;
-  const bbMult = 2.0;
-
-  const rsi = (closes) => {
-    let gains = 0, losses = 0;
-    for (let i = 1; i < rsiPeriod; i++) {
-      const diff = closes[closes.length - i] - closes[closes.length - i - 1];
-      if (diff >= 0) gains += diff; else losses -= diff;
-    }
-    const rs = gains / (losses || 1);
-    return 100 - 100 / (1 + rs);
-  };
-
-  const mean = closes.slice(-bbPeriod).reduce((a, b) => a + b) / bbPeriod;
-  const stdev = Math.sqrt(closes.slice(-bbPeriod).map(x => Math.pow(x - mean, 2)).reduce((a, b) => a + b) / bbPeriod);
-  const upper = mean + bbMult * stdev;
-  const lower = mean - bbMult * stdev;
-  const percentB = (closes[closes.length - 1] - lower) / (upper - lower);
-
-  return { rsi: rsi(closes), percentB };
-}
-
-// Check for signals
-async function checkSignals() {
-  for (const symbol of coins) {
-    try {
-      const ohlcv = await exchange.fetchOHLCV(symbol, '4h');
-      const { rsi, percentB } = calculateIndicators(ohlcv);
-
-      const macdLine = ohlcv.map(c => c[4]).slice(-50).reduce((a, b) => a + b) / 50;
-      const macdSignal = ohlcv.map(c => c[4]).slice(-20).reduce((a, b) => a + b) / 20;
-      const macdBuy = macdLine > macdSignal;
-
-      const macdSellLine = ohlcv.map(c => c[4]).slice(-100).reduce((a, b) => a + b) / 100;
-      const macdSellSignal = ohlcv.map(c => c[4]).slice(-8).reduce((a, b) => a + b) / 8;
-      const macdSell = macdSellLine < macdSellSignal;
-
-      const lastPrice = ohlcv[ohlcv.length - 1][4];
-      const now = new Date().toLocaleString();
-
-      if (!tradeState[symbol]) tradeState[symbol] = { inTrade: false };
-
-      if (!tradeState[symbol].inTrade && rsi < 45 && percentB < 0.4 && macdBuy) {
-        tradeState[symbol] = { inTrade: true, buyPrice: lastPrice, buyTime: now };
-        sendTelegramMessage(`🟢 *شراء*
-زوج: ${symbol}
-السعر: ${lastPrice}
-الوقت: ${now}`);
-      } else if (tradeState[symbol].inTrade && macdSell) {
-        const { buyPrice, buyTime } = tradeState[symbol];
-        const profit = ((lastPrice - buyPrice) / buyPrice * 100).toFixed(2);
-        sendTelegramMessage(`🔴 *بيع*
-زوج: ${symbol}
-الشراء: ${buyPrice} (${buyTime})
-البيع: ${lastPrice} (${now})
-النتيجة: ${profit}%`);
-        tradeState[symbol] = { inTrade: false };
-      }
-    } catch (e) {
-      console.log(`⚠️ خطأ في تحليل ${symbol}: ${e.message}`);
-    }
+  const gains = [], losses = [];
+  for (let i = 1; i <= rsiPeriod; i++) {
+    const change = closes[closes.length - i] - closes[closes.length - i - 1];
+    gains.push(Math.max(0, change));
+    losses.push(Math.max(0, -change));
   }
-  saveTradeState();
+  const avgGain = gains.reduce((a, b) => a + b) / rsiPeriod;
+  const avgLoss = losses.reduce((a, b) => a + b) / rsiPeriod;
+  const rs = avgLoss === 0 ? 100 : avgGain / avgLoss;
+  const rsi = 100 - 100 / (1 + rs);
+
+  // Bollinger Bands
+  const bbPeriod = 20;
+  const bbMult = 2;
+  const bbSlice = closes.slice(-bbPeriod);
+  const sma = bbSlice.reduce((a, b) => a + b) / bbPeriod;
+  const std = Math.sqrt(bbSlice.reduce((a, b) => a + (b - sma) ** 2, 0) / bbPeriod);
+  const lowerBB = sma - bbMult * std;
+  const upperBB = sma + bbMult * std;
+  const lastClose = closes[closes.length - 1];
+  const percentB = (lastClose - lowerBB) / (upperBB - lowerBB);
+
+  // MACD
+  function EMA(data, length) {
+    const k = 2 / (length + 1);
+    let ema = data[0];
+    return data.map(price => {
+      ema = price * k + ema * (1 - k);
+      return ema;
+    });
+  }
+
+  const macdBuyFast = EMA(closes, 1);
+  const macdBuySlow = EMA(closes, 50);
+  const macdBuy = macdBuyFast.map((val, i) => val - macdBuySlow[i]);
+  const signalBuy = EMA(macdBuy, 20);
+  const macdSellFast = EMA(closes, 1);
+  const macdSellSlow = EMA(closes, 100);
+  const macdSell = macdSellFast.map((val, i) => val - macdSellSlow[i]);
+  const signalSell = EMA(macdSell, 8);
+
+  const prevBuyMACD = macdBuy[macdBuy.length - 2];
+  const currBuyMACD = macdBuy[macdBuy.length - 1];
+  const prevBuySignal = signalBuy[signalBuy.length - 2];
+  const currBuySignal = signalBuy[signalBuy.length - 1];
+
+  const prevSellMACD = macdSell[macdSell.length - 2];
+  const currSellMACD = macdSell[macdSell.length - 1];
+  const prevSellSignal = signalSell[signalSell.length - 2];
+  const currSellSignal = signalSell[signalSell.length - 1];
+
+  const buyCross = prevBuyMACD < prevBuySignal && currBuyMACD > currBuySignal;
+  const sellCross = prevSellMACD > prevSellSignal && currSellMACD < currSellSignal;
+
+  return { rsi, percentB, buyCross, sellCross };
 }
 
-// Schedule every 5 minutes
-cron.schedule('*/5 * * * *', checkSignals);
+async function analyzeSymbol(symbol) {
+  try {
+    const market = symbol.replace('/', '');
+    const candles = await exchange.fetchOHLCV(symbol, '4h');
+    const formatted = candles.map(c => ({
+      time: c[0],
+      open: c[1],
+      high: c[2],
+      low: c[3],
+      close: c[4],
+      volume: c[5]
+    }));
+
+    const { rsi, percentB, buyCross, sellCross } = calculateIndicators(formatted);
+    const lastClose = formatted[formatted.length - 1].close;
+    const timeNow = new Date().toLocaleString();
+
+    if (!state[market]) state[market] = { bought: false };
+
+    if (!state[market].bought && rsi < 45 && percentB < 0.4 && buyCross) {
+      state[market] = {
+        bought: true,
+        buyPrice: lastClose,
+        buyTime: timeNow
+      };
+      sendTelegramMessage(`🟢 <b>شراء</b> ${symbol}\n📈 <b>السعر</b>: ${lastClose}\n🕒 <b>الوقت</b>: ${timeNow}`);
+    }
+
+    if (state[market].bought && sellCross) {
+      const profit = ((lastClose - state[market].buyPrice) / state[market].buyPrice * 100).toFixed(2);
+      const msg = `🔴 <b>بيع</b> ${symbol}
+📉 <b>السعر</b>: ${lastClose}
+🕒 <b>الوقت</b>: ${timeNow}
+💰 <b>تم الشراء</b> بسعر ${state[market].buyPrice} في ${state[market].buyTime}
+📊 <b>الربح/الخسارة</b>: ${profit}%`;
+      sendTelegramMessage(msg);
+      state[market].bought = false;
+    }
+
+    saveState();
+  } catch (err) {
+    console.log(`⚠️ خطأ في تحليل ${symbol}: ${err.message}`);
+  }
+}
+
+cron.schedule('*/5 * * * *', async () => {
+  for (const symbol of coins) {
+    await analyzeSymbol(symbol);
+  }
+});
