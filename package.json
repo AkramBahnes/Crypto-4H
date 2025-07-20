@@ -1,17 +1,14 @@
 {
-  "name": "binance-4h-alert-bot",
+  "name": "crypto-alert-bot",
   "version": "1.0.0",
-  "description": "Binance alert bot on 4H timeframe with RSI, %B and MACD strategy",
-  "main": "index.js",
   "type": "module",
+  "main": "index.js",
   "scripts": {
     "start": "node index.js"
   },
   "dependencies": {
-    "ccxt": "^4.1.98",
-    "node-telegram-bot-api": "^0.61.0",
-    "technicalindicators": "^3.1.0",
-    "node-cron": "^3.0.3",
-    "axios": "^1.6.8"
+    "axios": "^1.6.7",
+    "ccxt": "^4.1.66",
+    "node-cron": "^3.0.3"
   }
 }
