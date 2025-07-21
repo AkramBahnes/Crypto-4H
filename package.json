@@ -1,5 +1,5 @@
 {
-  "name": "railway-trading-bot",
+  "name": "telegram-trading-bot",
   "type": "module",
   "main": "index.js",
   "scripts": {
