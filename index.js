@@ -121,7 +121,7 @@ async function analyzeCoin(symbol) {
     }
 }
 
-cron.schedule('*/2 * * * *', async () => {
+cron.schedule('*/5 * * * *', async () => {
     console.log('تحليل العملات...');
     for (const symbol of coins) {
         await analyzeCoin(symbol);
