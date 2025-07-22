@@ -24,8 +24,8 @@ function calculateIndicators(candles) {
     const highs = candles.map(c => c[2]);
     const lows = candles.map(c => c[3]);
 
-    const rsiPeriod = 14;
-    const bbPeriod = 20;
+    const rsiPeriod = 10;
+    const bbPeriod = 10;
     const bbMultiplier = 2;
     const macdBuy = { fast: 1, slow: 5, signal: 30 };
     const macdSell = { fast: 2, slow: 10, signal: 15 };
@@ -98,7 +98,7 @@ async function analyzeCoin(symbol) {
         if (!state[symbol]) state[symbol] = { bought: false, buyPrice: 0 };
 
         if (!state[symbol].bought) {
-            if (indicators.rsi < 25 && indicators.percentB < 0 && indicators.macdB.macd > indicators.macdB.signal) {
+            if (indicators.rsi < 45 && indicators.percentB < 0.2 && indicators.macdB.macd > indicators.macdB.signal) {
                 state[symbol] = { bought: true, buyPrice: lastClose };
                 sendTelegramMessage(`🔔 *شراء ${symbol}*
 📈 السعر: ${lastClose}
@@ -106,7 +106,7 @@ async function analyzeCoin(symbol) {
                 saveState();
             }
         } else {
-            if (indicators.rsi > 50 && indicators.macdS.macd < indicators.macdS.signal) {
+            if (indicators.rsi > 60 && indicators.macdS.macd < indicators.macdS.signal) {
                 const profit = ((lastClose - state[symbol].buyPrice) / state[symbol].buyPrice) * 100;
                 sendTelegramMessage(`💰 *بيع ${symbol}*
 📉 السعر: ${lastClose}
