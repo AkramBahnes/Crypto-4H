@@ -21,6 +21,7 @@ function sendTelegramMessage(message) {
       console.error(`❌ فشل إرسال الرسالة إلى ${chatId}:`, error.message);
     });
   }
+}
 
 function formatDate(date) {
   const offsetDate = new Date(date.getTime() + 1 * 60 * 60 * 1000); // GMT+1
