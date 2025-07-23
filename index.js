@@ -86,7 +86,7 @@ async function analyze() {
       const id = symbol;
       const position = inPositions[id];
 
-      const buySignal = rsiVal < 45 && pbVal < 0.2 && prevMacdHistBuy < 0 && macdHistBuy > 0;
+      const buySignal = rsiVal < 25 && pbVal < 0.2 && prevMacdHistBuy < 0 && macdHistBuy > 0;
       const sellSignal = position && rsiVal > 50 && prevMacdHistSell > 0 && macdHistSell < 0;
 
       if (!position && buySignal) {
